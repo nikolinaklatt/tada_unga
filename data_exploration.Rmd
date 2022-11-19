@@ -1,0 +1,53 @@
+---
+title: "Text as Data - Assignment 3"
+author: "Jessica Higgins, Nikolina Klatt, Marco Schmildt, Gulce Tuncer"
+date: "`r format(Sys.time(), '%B %d, %Y | %H:%M:%S | %Z')`"
+output:
+  html_document:
+    code_folding: show
+    df_print: paged
+    highlight: tango
+    number_sections: no
+    theme: cosmo
+    toc: no
+---
+  
+<style>
+div.answer {background-color:#f3f0ff; border-radius: 5px; padding: 20px;}
+</style>
+
+```{r, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE,
+                      eval = TRUE,
+                      error = FALSE,
+                      message = FALSE,
+                      warning = FALSE,
+                      comment = NA)
+```
+
+
+***
+
+```{r, include = T}
+# PACKAGES
+library(readr)
+
+```
+
+<br>
+
+***
+
+
+
+### Data Exploration
+
+```{r}
+# load the data 
+un_general_debates <- read_csv("data/un-general-debates.csv")
+# View(un_general_debates)
+
+
+
+```
