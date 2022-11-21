@@ -9,7 +9,7 @@ output:
     highlight: tango
     number_sections: no
     theme: cosmo
-    toc: no
+    toc: TRUE
 ---
   
 <style>
@@ -32,6 +32,12 @@ knitr::opts_chunk$set(echo = TRUE,
 ```{r, include = T}
 # PACKAGES
 library(readr)
+library(tidyverse)
+library(quanteda)
+library(quanteda.textplots)
+library(quanteda.textstats)
+library(purrr)
+library(kableExtra)
 
 ```
 
@@ -39,15 +45,151 @@ library(readr)
 
 ***
 
-
-
 ### Data Exploration
-
 ```{r}
 # load the data 
-un_general_debates <- read_csv("data/un-general-debates.csv")
-# View(un_general_debates)
+raw_df <-  read.csv2("data/corpus.csv", # File name or full path of the file
+         header = TRUE,        # Whether to read the header or not
+         sep = "\t",           # Separator of the values
+         quote = "\"",         # Quoting character
+         comment.char = "",    # Character of the comments or empty string 
+         encoding = "unknown")
+
+raw_df <- raw_df %>% 
+  rename(number = X) 
+
+raw_df <- raw_df %>% 
+  arrange(year)
+
+glimpse(raw_df)
+
+```
+
+```{r}
+# How many texts?
+raw_df %>% 
+  nrow() %>% 
+  kable(col.names = "Number of texts") %>% 
+  kable_styling()
+```
+
+```{r}
+raw_df %>% 
+  group_by(year) %>% 
+  count 
+```
 
 
+```{r}
+raw_df %>% 
+  head(1) %>% 
+  kableExtra::kable() %>% 
+  kableExtra::kable_styling()
+```
+
+```{r}
+pattern <- "(\\b\\w*[Cc]limate\\w*\\b)"
+speeches <- raw_df$text
+
+list <- speeches %>% 
+  str_extract_all(pattern) %>% 
+  unlist() 
+
+list %>% 
+  table() %>% 
+  kable(caption = "Frequency of words containing 'climate'") %>% 
+  kable_styling()
+
+# list_year <-  unique(raw_df$year)
+# 
+# function(x){
+# raw_df %>% 
+#   filter(year == x)
+# return()
+# }
+# 
+# list2018 <- raw_df %>% 
+#   filter(year == 2018) %>% 
+#   select(text) %>% 
+#   str_extract_all("climate") %>% 
+#   unlist 
+# length2018 <- length(list2018)
+# 
+# list2019 <- raw_df %>% 
+#   filter(year == 2019) %>% 
+#   select(text) %>% 
+#   str_extract_all("climate") %>% 
+#   unlist
+# length2019 <- length(list2019)
+# 
+# list2020 <- raw_df %>% 
+#   filter(year == 2020) %>% 
+#   select(text) %>% 
+#   str_extract_all("climate") %>% 
+#   unlist
+# length2020 <- length(list2020)
+# 
+# df2018 <- c(list2018)
+# df2018_df <- as.data.frame(df2018)
+# df2019_df <- as.data.frame(list2019)
+# 
+# year_df <- full_join(df2018_df, df2019_df, by = character())
+
+```
+
+
+```{r}
+# turn data into a corpus
+corpus <- corpus(raw_df)
+
+# turn corpus into Document Feature Matrix
+dfmat <- corpus %>% 
+  tokens(., remove_punct = TRUE,
+         remove_symbols = TRUE,
+         remove_numbers = TRUE) %>%
+  tokens_remove(pattern=stopwords("en")) %>% 
+  dfm()
+
+print(dfmat, max_ndoc = 0, max_nfeat = 0)
+```
+
+```{r}
+features_dfm <- textstat_frequency(dfmat, n = 50)
+
+features_dfm %>%
+  kable(n=10) %>% 
+  kable_styling()
+
+```
+
+```{r}
+topfeatures(dfmat, n = 40, scheme = "docfreq") %>% 
+  head(10) %>% 
+  kable() %>% 
+  kable_styling()
+
+```
+
+```{r}
+features_dfm$feature <- with(features_dfm, reorder(feature, frequency))
+
+ggplot(features_dfm, aes(x = feature, y = frequency)) +
+    geom_point() + 
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  coord_flip()
+```
+
+```{r}
+wordcloud_dfm <- dfmat %>%
+    dfm_trim(min_termfreq = 5000, verbose = TRUE)
+
+wordcloud_dfm %>% 
+    textplot_wordcloud()
+```
+
+```{r}
+# Kew words in context
+toks <- tokens(corpus)
+kwic(toks, pattern = "climate", valuetype = "glob", window = 3)
 
 ```
