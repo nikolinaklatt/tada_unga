@@ -1,0 +1,125 @@
+---
+title: "Text as Data - Assignment 3"
+author: "Jessica Higgins, Nikolina Klatt, Marco Schmildt, Gülce Sena Tuncer"
+date: "`r format(Sys.time(), '%B %d, %Y | %H:%M:%S | %Z')`"
+output:
+  html_document:
+    code_folding: show
+    df_print: paged
+    highlight: tango
+    number_sections: no
+    theme: cosmo
+    toc: TRUE
+---
+
+```{r, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE,
+                      eval = TRUE,
+                      error = FALSE,
+                      message = FALSE,
+                      warning = FALSE,
+                      comment = NA)
+```
+
+```{r}
+# PACKAGES
+library(readr)
+library(tidyverse)
+library(quanteda)
+library(quanteda.textplots)
+library(quanteda.textstats)
+library(topicmodels)
+```
+
+## R Markdown
+
+We load our dataset:
+
+```{r}
+raw_df <-  read.csv2("data/corpus.csv", # File name or full path of the file
+         header = TRUE,        # Whether to read the header or not
+         sep = "\t",           # Separator of the values
+         quote = "\"",         # Quoting character
+         comment.char = "",    # Character of the comments or empty string 
+         encoding = "unknown")
+
+raw_df <- raw_df %>% 
+  rename(number = X) 
+
+raw_df <- raw_df %>% 
+  arrange(year)
+
+head(raw_df)
+
+```
+And create a corpus:
+
+```{r}
+# turn data into a corpus
+corpus <- corpus(raw_df)
+
+# turn corpus into Document Feature Matrix
+dfmat <- corpus %>% 
+  tokens(., remove_punct = TRUE,
+         remove_symbols = TRUE,
+         remove_numbers = TRUE) %>%
+  tokens_remove(pattern=stopwords("en")) %>% 
+  dfm()
+
+dfmat
+
+```
+
+LDA:
+
+This is also interesting: https://towardsdatascience.com/why-to-use-seeded-topic-models-in-your-next-project-and-how-to-implement-them-in-r-8502d15d6e8d
+
+```{r}
+#we create a topic model using LDA
+lda <- LDA(dfmat, k = 20)
+
+#dimensions of beta attribute, where topic-term matrix is stored
+print(dim(lda@beta))
+
+#dimensions of gamma attribute, where document-term matrix is stored
+print(dim(lda@gamma))
+
+```
+
+Using tidytext, we get the **topic-term probabilities**, displaying the top 8 terms in each topic.
+
+```{r}
+#we get our topic-term data
+topic_term <- tidy(lda, matrix="beta") %>%
+  group_by(topic) %>%
+  slice_max(beta, n = 8) %>%
+  ungroup() %>%
+  arrange(topic, -beta)
+topic_term
+
+```
+
+```{r}
+#top 8 term of each topic
+wordplot <- topic_term %>%
+  mutate(term = reorder_within(term, beta, topic)) %>%
+  ggplot(aes(beta, term, fill = factor(topic))) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ topic, scales = "free") +
+  scale_y_reordered() +
+  labs(title = "Top 8 terms of each topic", subtitle = "UN General Assembly Debates, 1970-2020")
+
+wordplot
+```
+
+Using tidytext, we get the **document-topic probabilities**, displaying composition of each document by topic.
+
+```{r}
+#we get our doc-topic data
+doc_topics_01 <- tidy(lda, matrix="gamma")
+
+#doc_topics_02 <- merge(doc_topics_01,df,by="document",all=TRUE)
+#doc_topics_02 <- select(doc_topics_02, -text)
+#doc_topics_02
+```
