@@ -1,0 +1,147 @@
+---
+title: "Text as Data - Assignment 3 - Sentiment Analysis"
+author: "Jessica Higgins, Nikolina Klatt, Marco Schmildt, Gulce Tuncer"
+date: "`r format(Sys.time(), '%B %d, %Y | %H:%M:%S | %Z')`"
+output:
+  html_document:
+    code_folding: show
+    df_print: paged
+    highlight: tango
+    number_sections: no
+    theme: cosmo
+    toc: TRUE
+---
+  
+<style>
+div.answer {background-color:#f3f0ff; border-radius: 5px; padding: 20px;}
+</style>
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      eval = TRUE,
+                      error = FALSE,
+                      message = FALSE,
+                      warning = FALSE,
+                      comment = NA)
+```
+
+
+***
+
+```{r, include = T}
+# PACKAGES
+library(readr)
+library(tidyverse)
+library(quanteda)
+library(quanteda.textplots)
+library(quanteda.textstats)
+library(purrr)
+library(kableExtra)
+library(tidytext)
+
+```
+
+# Max' approach from class with affin
+
+```{r}
+# load the affin lexicon
+lex_affin <- read_tsv(
+  "https://raw.githubusercontent.com/fnielsen/afinn/master/afinn/data/AFINN-en-165.txt",
+  col_names=c("word","value")
+)
+sample_n(lex_affin, 5)
+
+```
+
+Join the values of the lexicon with the DFM to see which words in the texts have what sentiment
+```{r}
+text_tokens <- tidy(dfmat) %>% 
+  inner_join(lex, by=c("term" = "word"))
+
+text_tokens
+```
+
+sum word scores for each document to get a sentiment score for that document 
+
+```{r}
+doc_sentiments <- tidy(dfmat) %>%
+  inner_join(lex, by=c("term" = "word")) %>%
+  mutate(value=value*count) %>%
+  group_by(document) %>%
+  summarise(value = sum(value))
+
+doc_sentiments
+```
+
+# COMMENT 
+I cannot get the sentiment over time to work yet. 
+
+
+## Approach from https://www.kaggle.com/code/dleirer/sentiment-expressed-by-countries-at-un
+
+```{r}
+#Create smaller DF for permanent members of UNSC 
+p5_df <- raw_df %>% 
+  filter(country == "FRA" | country == "USA" | country == "GBR" | country == "RUS" | country == "CHN" )
+
+```
+
+```{r}
+#Clean data
+tidy_p5_df <- p5_df %>% 
+  unnest_tokens(word, text)
+
+#remove stop words
+data(stop_words)
+tidy_p5_2_df <- tidy_p5_df %>%
+  anti_join(stop_words)
+
+#remove short words that are shorter than 4 words [6 letters?]
+tidy_p5_2_df<-tidy_p5_2_df [nchar(tidy_p5_2_df$word) > 6,]
+str(tidy_p5_2_df)
+```
+
+
+```{r}
+#Get frequency of words
+frequency <- tidy_p5_2_df %>% 
+  group_by(year,country) %>% 
+  count(word, sort = TRUE) %>% 
+  left_join(tidy_p5_2_df %>% 
+              group_by(year,country) %>% 
+              summarise(total = n())) %>%
+  mutate(freq = n/total)
+
+head(frequency)
+```
+```{r}
+
+get_sentiments("nrc")
+
+# Add sentiment library subset to positive and negative sentiment.
+nrc_all<-get_sentiments("nrc") %>% 
+  filter(sentiment == "negative" | sentiment == "positive")
+
+# Modify frequency data frame by joining with sentiment. Sum up frequency based on sentiment, country and year.
+ frequency <- frequency  %>% 
+  inner_join(nrc_all) %>% 
+  group_by(year,country, sentiment) %>% 
+  summarise(sum(freq))
+
+colnames(frequency)<-c("year","country","sentiment","freq")
+head(frequency)
+```
+```{r}
+#Make plot of sentiment over time.
+ggplot(data = frequency, aes(year, freq, color=sentiment, fill=sentiment)) +
+  geom_line() + 
+  facet_grid( ~ country) + 
+  theme(axis.text.x = element_text(size=10, angle=90))
+
+```
+
+
+
+
+
+
