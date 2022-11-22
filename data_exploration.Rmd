@@ -1,5 +1,5 @@
 ---
-title: "Text as Data - Assignment 3"
+title: "Text as Data - Assignment 3 - Data Exploration"
 author: "Jessica Higgins, Nikolina Klatt, Marco Schmildt, Gulce Tuncer"
 date: "`r format(Sys.time(), '%B %d, %Y | %H:%M:%S | %Z')`"
 output:
@@ -17,7 +17,6 @@ div.answer {background-color:#f3f0ff; border-radius: 5px; padding: 20px;}
 </style>
 
 ```{r, include=FALSE}
-
 knitr::opts_chunk$set(echo = TRUE,
                       eval = TRUE,
                       error = FALSE,
@@ -76,7 +75,7 @@ raw_df %>%
 ```{r}
 raw_df %>% 
   group_by(year) %>% 
-  count 
+  count
 ```
 
 
@@ -99,41 +98,61 @@ list %>%
   table() %>% 
   kable(caption = "Frequency of words containing 'climate'") %>% 
   kable_styling()
+```
 
-# list_year <-  unique(raw_df$year)
-# 
-# function(x){
-# raw_df %>% 
-#   filter(year == x)
-# return()
-# }
-# 
-# list2018 <- raw_df %>% 
-#   filter(year == 2018) %>% 
-#   select(text) %>% 
-#   str_extract_all("climate") %>% 
-#   unlist 
-# length2018 <- length(list2018)
-# 
-# list2019 <- raw_df %>% 
-#   filter(year == 2019) %>% 
-#   select(text) %>% 
-#   str_extract_all("climate") %>% 
-#   unlist
-# length2019 <- length(list2019)
-# 
-# list2020 <- raw_df %>% 
-#   filter(year == 2020) %>% 
-#   select(text) %>% 
-#   str_extract_all("climate") %>% 
-#   unlist
-# length2020 <- length(list2020)
-# 
-# df2018 <- c(list2018)
-# df2018_df <- as.data.frame(df2018)
-# df2019_df <- as.data.frame(list2019)
-# 
-# year_df <- full_join(df2018_df, df2019_df, by = character())
+```{r}
+climate_df <- filter(raw_df, !grepl("(\\b\\w*[Cc]limate\\w*\\b)",text))
+
+climate_count_df <- climate_df %>% 
+  group_by(year) %>% 
+  count
+
+climate_count_df %>% 
+  ggplot(aes(year, n))+
+  geom_col() +
+  labs(x = "Year",
+       y = "Number of speeches mentioning 'climate'",
+       title ="Frequency of speeches about 'climate'")
+
+## COMMENT:
+# I think there is a bug in here somwhere
+
+```
+
+```{r}
+list_year <-  unique(raw_df$year)
+freq_df <- as.data.frame(list_year)
+freq_df <- freq_df %>% 
+  rename(year = list_year) 
+
+# pattern = "(\\b\\w*[Cc]limate\\w*\\b)"
+
+get_length <- function(x){
+mentionings <- raw_df %>%
+    filter(year == x) %>% 
+    select(text) %>% 
+    str_extract_all(pattern) %>% 
+    unlist
+length <- length(mentionings)
+return(length)
+}
+
+df_raw <- map(list_year, function(x) { # list is the previously created list 
+  length <- get_length(x)  # previously created function to get the length
+    #length_list <- list(length)
+    return(length)
+})
+
+freq_df$n <- df_raw
+new_df <- freq_df %>% unnest(n)
+
+# Plot the frequency of mentioning words containing "climate" over the years
+new_df %>% 
+  ggplot(aes(year, n)) +
+  geom_col() +
+  labs(x = "Year",
+       y = "Number of times",
+       title ="Frequency of mentioning words containing 'climate'")
 
 ```
 
