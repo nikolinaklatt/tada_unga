@@ -151,4 +151,14 @@ ggplot(lda.themen.absaetze, aes(year, Anteil, color = Thema, fill = Thema)) + ge
 
 ```
 
+```{r}
 
+saveRDS(lda, file = "data/lda_model.rds")
+
+```
+
+```{r}
+
+lda <- readRDS("data/lda_model.rds")
+
+```
