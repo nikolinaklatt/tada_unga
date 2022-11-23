@@ -91,7 +91,7 @@ Using tidytext, we get the **topic-term probabilities**, displaying the top 8 te
 
 ```{r}
 #we get our topic-term data
-topic_term <- tidy(lda, matrix="beta") %>%
+topic_term <- tidytext::tidy(lda, matrix="beta") %>%
   group_by(topic) %>%
   slice_max(beta, n = 8) %>%
   ungroup() %>%
@@ -103,11 +103,11 @@ topic_term
 ```{r}
 #top 8 term of each topic
 wordplot <- topic_term %>%
-  mutate(term = reorder_within(term, beta, topic)) %>%
+  mutate(term = tidytext::reorder_within(term, beta, topic)) %>%
   ggplot(aes(beta, term, fill = factor(topic))) +
   geom_col(show.legend = FALSE) +
   facet_wrap(~ topic, scales = "free") +
-  scale_y_reordered() +
+  tidytext::scale_y_reordered() +
   labs(title = "Top 8 terms of each topic", subtitle = "UN General Assembly Debates, 1970-2020")
 
 wordplot
@@ -117,9 +117,38 @@ Using tidytext, we get the **document-topic probabilities**, displaying composit
 
 ```{r}
 #we get our doc-topic data
-doc_topics_01 <- tidy(lda, matrix="gamma")
+doc_topics_01 <- tidytext::tidy(lda, matrix="gamma")
 
 #doc_topics_02 <- merge(doc_topics_01,df,by="document",all=TRUE)
 #doc_topics_02 <- select(doc_topics_02, -text)
 #doc_topics_02
 ```
+
+```{r}
+
+as.data.frame(terms(lda, 10))
+```
+
+
+```{r}
+
+LDA_result <- data.frame(Thema = topics(lda))
+write.csv(LDA_result,"data/LDA_result.csv", row.names = FALSE)
+LDA_result
+```
+
+
+```{r}
+
+lda.themen.absaetze <- data.frame(raw_df, Thema = topics(lda)) %>%
+  add_count(year, Thema) %>%
+  group_by(year) %>% 
+  mutate(Anteil = n/sum(n)) %>% 
+  ungroup() %>% 
+  mutate(Thema = paste0("Thema ", sprintf("%02d", Thema))) %>% 
+  mutate(year = as_factor(year))
+ggplot(lda.themen.absaetze, aes(year, Anteil, color = Thema, fill = Thema)) + geom_bar(stat="identity") + ggtitle("LDA-Topics ") + xlab("") + ylab("Themen-Anteil (%)") + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+
