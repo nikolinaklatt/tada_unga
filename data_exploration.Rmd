@@ -37,6 +37,7 @@ library(quanteda.textplots)
 library(quanteda.textstats)
 library(purrr)
 library(kableExtra)
+library(ggplot2)
 
 ```
 
@@ -78,43 +79,53 @@ glimpse(paragraph_df)
 
 
 ```{r}
-# How many texts?
-raw_df %>% 
+# How many texts/paragraphs?
+paragraph_df %>% 
   nrow() %>% 
   kable(col.names = "Number of texts") %>% 
   kable_styling()
 ```
 
 ```{r}
-raw_df %>% 
+paragraph_df %>% 
   group_by(year) %>% 
   count
 ```
+```{r}
+paragraph_df %>% 
+  group_by(year) %>% 
+  count %>% 
+  ggplot(aes(year, n)) +
+  geom_col() +
+  labs(x = "Year", y = "number",
+title ="Distribution of texts per year")
+
+```
+
 
 
 ```{r}
-raw_df %>% 
+paragraph_df %>% 
   head(1) %>% 
   kableExtra::kable() %>% 
   kableExtra::kable_styling()
 ```
 
 ```{r}
-pattern <- "(\\b\\w*[Cc]limate\\w*\\b)"
-speeches <- raw_df$text
+speeches <- paragraph_df$text
 
 list <- speeches %>% 
-  str_extract_all(pattern) %>% 
+  str_extract_all("(\\b\\w*[Cc]limate [Cc]hange\\w*\\b)") %>% 
   unlist() 
 
 list %>% 
   table() %>% 
-  kable(caption = "Frequency of words containing 'climate'") %>% 
+  kable(caption = "Frequency of words containing 'climate change'") %>% 
   kable_styling()
 ```
 
 ```{r}
-climate_df <- filter(raw_df, !grepl("(\\b\\w*[Cc]limate\\w*\\b)",text))
+climate_df <- filter(paragraph_df, !grepl("(\\b\\w*[Cc]limate [Cc]hange\\w*\\b)",text))
 #climate_df <- filter(raw_df, !grepl("(\\b\\w*[Ww]arming\\w*\\b)",text))
 
 climate_count_df <- climate_df %>% 
@@ -125,22 +136,18 @@ climate_count_df %>%
   ggplot(aes(year, n))+
   geom_col() +
   labs(x = "Year",
-       y = "Number of speeches mentioning 'climate'",
-       title ="Frequency of speeches about 'climate'")
-
-## COMMENT:
-# I think there is a bug in here somwhere
+       y = "Number of speeches mentioning 'climate change'",
+       title ="Frequency of speeches about 'climate change'")
 
 ```
 
 ```{r}
-list_year <-  unique(raw_df$year)
+list_year <-  unique(paragraph_df$year)
 freq_df <- as.data.frame(list_year)
 freq_df <- freq_df %>% 
   rename(year = list_year) 
 
-# pattern = "(\\b\\w*[Cc]limate\\w*\\b)"
-
+pattern = "(\\b\\w*[Cc]limate [Cc]hange\\w*\\b)"
 
 get_length <- function(x){
 mentionings <- raw_df %>%
@@ -152,29 +159,30 @@ length <- length(mentionings)
 return(length)
 }
 
-df_raw <- map(list_year, function(x) { # list is the previously created list 
+freq_df_0 <- map(list_year, function(x) { # list is the previously created list 
   length <- get_length(x)  # previously created function to get the length
     #length_list <- list(length)
     return(length)
 })
 
-freq_df$n <- df_raw
-new_df <- freq_df %>% unnest(n)
+freq_df$n <- freq_df_0
+freq_df <- freq_df %>% 
+  unnest(n)
 
 # Plot the frequency of mentioning words containing "climate" over the years
-new_df %>% 
+freq_df %>% 
   ggplot(aes(year, n)) +
   geom_col() +
   labs(x = "Year",
        y = "Number of times",
-       title ="Frequency of mentioning words containing 'climate'")
+       title ="Frequency of mentioning words containing 'climate change'")
 
 ```
 
 
 ```{r}
 # turn data into a corpus
-corpus <- corpus(raw_df)
+corpus <- corpus(paragraph_df)
 
 # turn corpus into Document Feature Matrix
 dfmat <- corpus %>% 
@@ -188,7 +196,7 @@ print(dfmat, max_ndoc = 0, max_nfeat = 0)
 ```
 
 ```{r}
-features_dfm <- textstat_frequency(dfmat, n = 50)
+features_dfm <- textstat_frequency(dfmat, n = 25)
 
 features_dfm %>%
   kable(n=10) %>% 
@@ -197,7 +205,7 @@ features_dfm %>%
 ```
 
 ```{r}
-topfeatures(dfmat, n = 40, scheme = "docfreq") %>% 
+topfeatures(dfmat, n = 20, scheme = "docfreq") %>% 
   head(10) %>% 
   kable() %>% 
   kable_styling()
@@ -224,6 +232,6 @@ wordcloud_dfm %>%
 ```{r}
 # Kew words in context
 toks <- tokens(corpus)
-kwic(toks, pattern = "climate", valuetype = "glob", window = 3)
+kwic(toks, pattern = phrase("climate change"), valuetype = "regex", window = 3)
 
 ```
