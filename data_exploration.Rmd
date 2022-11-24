@@ -64,6 +64,24 @@ glimpse(raw_df)
 
 ```
 
+
+```{r echo=TRUE, message=FALSE, cache=TRUE}
+# To split texts by paragraphs / so far the period 2007-2009 is not split properly. I'm working on it.
+paragraph_df <- raw_df %>% 
+    mutate(text = strsplit(as.character(text), "\\.\n")) %>% 
+    unnest(text) %>% 
+  group_by(country,year) %>% 
+  mutate(paragraph_number = 1:n())
+
+glimpse(paragraph_df)
+```
+
+255,966 "\\.\n"
+255,968 ([[![:alnum:]]*)\
+256,419
+"\\.([:space:])*\n"
+
+
 ```{r}
 # How many texts?
 raw_df %>% 
@@ -102,6 +120,7 @@ list %>%
 
 ```{r}
 climate_df <- filter(raw_df, !grepl("(\\b\\w*[Cc]limate\\w*\\b)",text))
+#climate_df <- filter(raw_df, !grepl("(\\b\\w*[Ww]arming\\w*\\b)",text))
 
 climate_count_df <- climate_df %>% 
   group_by(year) %>% 
@@ -126,6 +145,7 @@ freq_df <- freq_df %>%
   rename(year = list_year) 
 
 # pattern = "(\\b\\w*[Cc]limate\\w*\\b)"
+
 
 get_length <- function(x){
 mentionings <- raw_df %>%
