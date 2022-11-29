@@ -77,7 +77,9 @@ This is also interesting: https://towardsdatascience.com/why-to-use-seeded-topic
 
 ```{r}
 #we create a topic model using LDA
-lda <- LDA(dfmat, k = 20)
+# lda <- LDA(dfmat, k = 20)
+
+lda <- readRDS("data/lda_model.rds")
 
 #dimensions of beta attribute, where topic-term matrix is stored
 print(dim(lda@beta))
@@ -125,7 +127,6 @@ doc_topics_01 <- tidytext::tidy(lda, matrix="gamma")
 ```
 
 ```{r}
-
 as.data.frame(terms(lda, 10))
 ```
 
@@ -139,7 +140,6 @@ LDA_result
 
 
 ```{r}
-
 lda.themen.absaetze <- data.frame(raw_df, Thema = topics(lda)) %>%
   add_count(year, Thema) %>%
   group_by(year) %>% 
@@ -147,9 +147,25 @@ lda.themen.absaetze <- data.frame(raw_df, Thema = topics(lda)) %>%
   ungroup() %>% 
   mutate(Thema = paste0("Thema ", sprintf("%02d", Thema))) %>% 
   mutate(year = as_factor(year))
-ggplot(lda.themen.absaetze, aes(year, Anteil, color = Thema, fill = Thema)) + geom_bar(stat="identity") + ggtitle("LDA-Topics ") + xlab("") + ylab("Themen-Anteil (%)") + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+lda_topics_plot <- ggplot(lda.themen.absaetze, aes(year, Anteil, color = Thema, fill = Thema)) +
+  geom_bar(stat="identity") + 
+  ggtitle("LDA-Topics ") + 
+  xlab("") + 
+  ylab("Themen-Anteil (%)") + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+lda_topics_plot
 
 ```
+```{r}
+
+library(plotly)
+ggplotly(lda_topics_plot)
+
+```
+
+
 
 ```{r}
 
@@ -157,8 +173,4 @@ saveRDS(lda, file = "data/lda_model.rds")
 
 ```
 
-```{r}
 
-lda <- readRDS("data/lda_model.rds")
-
-```
