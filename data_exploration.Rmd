@@ -172,10 +172,12 @@ freq_df <- freq_df %>%
 # Plot the frequency of mentioning words containing "climate" over the years
 freq_df %>% 
   ggplot(aes(year, n)) +
-  geom_col() +
+  geom_col(fill = "#ff69b4") +
   labs(x = "Year",
        y = "Number of times",
        title ="Frequency of mentioning words containing 'climate change'")
+
+
 
 ```
 
