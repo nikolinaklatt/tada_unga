@@ -1,0 +1,109 @@
+---
+title: "Mini exploration_doc length"
+author: "Jessica Higgins, Nikolina Klatt, Marco Schmildt, Gülce Sena Tuncer"
+date: "`r format(Sys.time(), '%B %d, %Y | %H:%M:%S | %Z')`"
+output:
+  html_document:
+    code_folding: show
+    df_print: paged
+    highlight: tango
+    number_sections: no
+    theme: cosmo
+    toc: TRUE
+---
+
+```{r, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE,
+                      eval = TRUE,
+                      error = FALSE,
+                      message = FALSE,
+                      warning = FALSE,
+                      comment = NA)
+```
+
+```{r}
+# PACKAGES
+library(readr)
+library(tidyverse)
+library(quanteda)
+library(quanteda.textplots)
+library(quanteda.textstats)
+library(topicmodels)
+library(stm)
+
+```
+
+## R Markdown
+
+We load our dataset:
+
+```{r}
+raw_df <-  read.csv2("data/corpus.csv", # File name or full path of the file
+         header = TRUE,        # Whether to read the header or not
+         sep = "\t",           # Separator of the values
+         quote = "\"",         # Quoting character
+         comment.char = "",    # Character of the comments or empty string 
+         encoding = "unknown")
+
+raw_df <- raw_df %>% 
+  rename(number = X) 
+
+raw_df <- raw_df %>% 
+  arrange(year)
+
+raw_df
+
+```
+
+
+```{r}
+short_df <- raw_df %>% 
+    mutate(text = strsplit(as.character(text), "(\\.\n|\\. \n|\\.  \n)")) %>% 
+    unnest(text) %>% 
+  group_by(country,year) %>% 
+  mutate(paragraph_number = 1:n()) %>%
+  filter(year > 1989) %>% 
+  filter(text != "")%>%
+  filter(text > 0 )
+
+short_df$docnum <- paste0(1:nrow(short_df))
+
+short_df
+
+```
+
+
+```{r}
+raw_df_1990 <- filter(raw_df, year > 1989)
+raw_df_1990
+
+raw_df_1990 %>% 
+  nrow() %>% 
+  kable(col.names = "Number of texts") %>% 
+  kable_styling()
+
+short_df_1990 <- filter(short_df, year > 1989)
+short_df_1990
+
+short_df_1990 %>% 
+  nrow() %>% 
+  kable(col.names = "Number of texts") %>% 
+  kable_styling()
+
+```
+
+```{r}
+# turn data into a corpus
+corpus <- corpus(raw_df_1990)
+
+# turn corpus into Document Feature Matrix
+dfmat <- corpus %>% 
+  tokens(., remove_punct = TRUE,
+         remove_symbols = TRUE,
+         remove_numbers = TRUE) %>%
+  tokens_remove(pattern=stopwords("en")) %>% 
+  dfm()
+
+raw_dfmat
+```
