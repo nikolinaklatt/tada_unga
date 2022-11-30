@@ -1,0 +1,217 @@
+---
+title: "Text as Data - Assignment 3 - Sentiment Analysis"
+author: "Jessica Higgins, Nikolina Klatt, Marco Schmildt, Gulce Tuncer"
+date: "`r format(Sys.time(), '%B %d, %Y | %H:%M:%S | %Z')`"
+output:
+  html_document:
+    code_folding: show
+    df_print: paged
+    highlight: tango
+    number_sections: no
+    theme: cosmo
+    toc: TRUE
+---
+  
+<style>
+div.answer {background-color:#f3f0ff; border-radius: 5px; padding: 20px;}
+</style>
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      eval = TRUE,
+                      error = FALSE,
+                      message = FALSE,
+                      warning = FALSE,
+                      comment = NA)
+```
+
+
+***
+
+```{r, include = T}
+# PACKAGES
+library(readr)
+library(tidyverse)
+library(quanteda)
+library(quanteda.textplots)
+library(quanteda.textstats)
+library(purrr)
+library(kableExtra)
+library(tidytext)
+
+```
+
+# Max' approach from class with affin
+
+```{r}
+# load the affin lexicon
+lex_affin <- read_tsv(
+  "https://raw.githubusercontent.com/fnielsen/afinn/master/afinn/data/AFINN-en-165.txt",
+  col_names=c("word","value")
+)
+sample_n(lex_affin, 5)
+
+```
+
+```{r}
+corpus_19 <- corpus(topic19)
+
+# turn corpus into Document Feature Matrix
+dfmat_19 <- corpus %>% 
+  tokens(., remove_punct = TRUE,
+         remove_symbols = TRUE,
+         remove_numbers = TRUE) %>%
+  tokens_remove(pattern=stopwords("en")) %>% 
+  dfm()
+
+dfmat_19
+```
+
+
+Join the values of the lexicon with the DFM to see which words in the texts have what sentiment
+```{r}
+text_tokens <- tidy(dfmat_19) %>% 
+  inner_join(lex_affin, by=c("term" = "word"))
+
+text_tokens
+```
+
+sum word scores for each document to get a sentiment score for that document 
+
+```{r}
+doc_sentiments <- tidy(dfmat_19) %>%
+  inner_join(lex_affin, by=c("term" = "word")) %>%
+  mutate(value=value*count) %>%
+  group_by(document) %>%
+  summarise(value = sum(value))
+
+doc_sentiments
+```
+
+
+```{r}
+#Create smaller DF for permanent members of UNSC 
+p5_df <- raw_df %>% 
+  filter(country == "FRA" | country == "USA" | country == "GBR" | country == "RUS" | country == "CHN" )
+
+```
+
+Dataframe with annex information
+```{r}
+EIT<-c(  "BGR", "BLR", "CSK","HRV", "EST","KAZ", "LVA", "LTU","LIE","MCO", "POL", 
+ "ROU","RUS", "SVK", "SVN", "UKR")
+
+annex_2<-c("AUS", "AUT", "BEL","CAN", "DNK", "FIN", "FRA", "DEU", "GRC", "HUN", "ISL", "IRL", "ITA", "JPN", "LUX", "NLD", "NZL","NOR", 
+"PRT","ESP", "SWE", "CHE","TUR", "GBR","USA")
+
+annex_df<- mutate(topic19, annex = ifelse(country %in% EIT, 1,
+                                      ifelse(country %in% annex_2, 2,0)))
+EIT<-c(  "BGR", "BLR", "CSK","HRV", "EST","KAZ", "LVA", "LTU","LIE","MCO", "POL", 
+ "ROU","RUS", "SVK", "SVN", "UKR")
+
+annex_2<-c("AUS", "AUT", "BEL","CAN", "DNK", "FIN", "FRA", "DEU", "GRC", "HUN", "ISL", "IRL", "ITA", "JPN", "LUX", "NLD", "NZL","NOR", 
+"PRT","ESP", "SWE", "CHE","TUR", "GBR","USA")
+
+annex_df<- mutate(topic19, annex = ifelse(country %in% EIT, 1,
+                                      ifelse(country %in% annex_2, 2,0)))
+
+```
+
+
+```{r}
+#Clean data
+tidy_p5_df <- p5_df %>% 
+  unnest_tokens(word, text)
+
+#remove stop words
+data(stop_words)
+tidy_p5_2_df <- tidy_p5_df %>%
+  anti_join(stop_words)
+
+#remove short words that are shorter than 4 words [6 letters?]
+tidy_p5_2_df<-tidy_p5_2_df [nchar(tidy_p5_2_df$word) > 6,]
+str(tidy_p5_2_df)
+```
+
+```{r}
+#Clean data
+tidy_annex_df <- annex_df %>% 
+  unnest_tokens(word, text)
+
+#remove stop words
+data(stop_words)
+tidy_annex_2_df <- tidy_annex_df %>%
+  anti_join(stop_words)
+
+#remove short words that are shorter than 4 words [6 letters?]
+tidy_annex_2_df<-tidy_annex_2_df [nchar(tidy_annex_2_df$word) > 6,]
+str(tidy_annex_2_df)
+```
+
+
+
+
+```{r}
+#Get frequency of words
+frequency <- tidy_topic_2_df %>% 
+  group_by(year,country) %>% 
+  count(word, sort = TRUE) %>% 
+  left_join(tidy_topic_2_df %>% 
+              group_by(year,country) %>% 
+              summarise(total = n())) %>%
+  mutate(freq = n/total)
+
+head(frequency)
+```
+
+```{r}
+#Get frequency of words
+frequency <- tidy_annex_2_df %>% 
+  group_by(year,annex) %>% 
+  count(word, sort = TRUE) %>% 
+  left_join(tidy_annex_2_df %>% 
+              group_by(year,annex) %>% 
+              summarise(total = n())) %>%
+  mutate(freq = n/total)
+
+head(frequency)
+```
+```{r}
+#Get frequency of words
+frequency <- tidy_topic_2_df %>% 
+  group_by(year,country) %>% 
+  count(word, sort = TRUE) %>% 
+  left_join(tidy_topic_2_df %>% 
+              group_by(year,country) %>% 
+              summarise(total = n())) %>%
+  mutate(freq = n/total)
+
+head(frequency)
+```
+
+
+```{r}
+get_sentiments("nrc")
+
+# Add sentiment library subset to positive and negative sentiment.
+nrc_all<-get_sentiments("nrc") %>% 
+  filter(sentiment == "negative" | sentiment == "positive")
+
+# Modify frequency data frame by joining with sentiment. Sum up frequency based on sentiment, country and year.
+frequency <- frequency %>% 
+  inner_join(nrc_all) %>% 
+  group_by(year,country, sentiment) %>% 
+  summarise(sum(freq))
+
+colnames(frequency)<-c("year","country","sentiment","freq")
+head(frequency)
+```
+
+```{r}
+#Make plot of sentiment over time.
+ggplot(data = frequency, aes(year, freq, color=sentiment, fill=sentiment)) +
+  geom_line() + 
+  facet_grid( ~ country) + 
+  theme(axis.text.x = element_text(size=10, angle=90))
+
+```

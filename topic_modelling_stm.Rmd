@@ -1,0 +1,191 @@
+
+```{r}
+# PACKAGES
+library(readr)
+library(tidyverse)
+library(quanteda)
+library(quanteda.textplots)
+library(quanteda.textstats)
+library(topicmodels)
+library(stm)
+# library(plotQuote)
+```
+
+## R Markdown
+
+We load our dataset:
+
+```{r}
+raw_df <-  read.csv2("~/Documents/GitHub/text-as-data/tada_unga_2/tada_unga/data/corpus.csv", # File name or full path of the file
+         header = TRUE,        # Whether to read the header or not
+         sep = "\t",           # Separator of the values
+         quote = "\"",         # Quoting character
+         comment.char = "",    # Character of the comments or empty string 
+         encoding = "unknown")
+
+raw_df <- raw_df %>% 
+  rename(number = X) 
+
+raw_df <- raw_df %>% 
+  arrange(year)
+
+head(raw_df)
+
+```
+
+
+```{r}
+
+short_df <- raw_df %>% 
+    mutate(text = strsplit(as.character(text), "(\\.\n|\\. \n|\\.  \n)")) %>% 
+    unnest(text) %>% 
+  group_by(country,year) %>% 
+  mutate(paragraph_number = 1:n()) %>%
+  filter(year > 1989) %>% 
+  filter(text != "")%>%
+  filter(text > 0 )
+
+short_df$docnum <- paste0(1:nrow(short_df))
+
+```
+
+
+
+```{r}
+processed <- textProcessor(short_df$text, metadata = short_df) 
+out <- prepDocuments(processed$documents, processed$vocab, processed$meta)
+docs <- out$documents
+vocab <- out$vocab
+meta <- out$meta
+
+
+```
+
+
+```{r}
+
+plotRemoved(processed$documents, lower.thresh = seq(1, 200, by = 100))
+out <- prepDocuments(processed$documents, processed$vocab, processed$meta, lower.thresh = 15)
+
+```
+
+
+```{r}
+poliblogPrevFit_30_1990 <- stm(documents = out$documents, 
+                       vocab = out$vocab, 
+                       K = 30, 
+                       prevalence = ~country + s(year), 
+                       max.em.its = 75, 
+                       data = out$meta, 
+                       init.type = "Spectral")
+
+
+
+saveRDS(poliblogPrevFit_30_1990, file = "data/stm_poliblogPrevFit_30_1990.rds")
+# poliblogPrevFit <- readRDS("data/stm_poliblogPrevFit.rds")
+```
+
+
+```{r}
+poliblogSelect <- selectModel(out$documents, out$vocab, 
+                              K = 20, 
+                              prevalence =  ~country + s(year), 
+                              max.em.its = 15, 
+                              data = out$meta, 
+                              runs = 20, 
+                              seed = 8458159)
+
+plotModels(poliblogSelect, pch = c(1, 2, 3, 4), legend.position = "bottomright")
+
+saveRDS(poliblogSelect, file = "data/stm_poliblogSelect.rds")
+poliblogSelect <- readRDS("data/stm_poliblogSelect.rds")
+
+```
+
+
+
+```{r}
+plotModels(poliblogSelect, pch = c(1, 2, 3, 4), legend.position = "bottomright")
+
+'selectedmodel <- poliblogSelect$runout[[3]]
+
+```
+
+
+```{r}
+labelTopics(poliblogPrevFit_30_1990, c(1:30))
+
+```
+
+
+```{r}
+
+dt <- make.dt(poliblogPrevFit_30_1990, meta=out$meta)
+dt_1 <- dt %>% 
+  select(Topic1, text, country, session, year, paragraph_number) %>% 
+  filter(Topic1 > 0.1)
+
+#df[docnum[order(Topic2, decreasing=FALSE)][1:5]]
+
+```
+
+
+
+```{r}
+out$meta$country <- as.factor(out$meta$country)
+prep <- estimateEffect(1:30 ~country + s(year), poliblogPrevFit_30_1990, meta = out$meta, uncertainty = "Global")
+summary(prep, topics = 1)
+
+```
+
+
+```{r}
+plot(poliblogPrevFit_30_1990, type = "summary", xlim = c(0, 0.3))
+
+plot(poliblogPrevFit_30_1990$runout[[2]], type = "summary", xlim = c(0, 0.3))
+
+```
+
+```{r}
+plot(poliblogPrevFit_30_1990, type = "labels", topics = c(1, 2, 6, 15), main = "Topic terms")
+
+
+```
+
+
+```{r}
+plot(poliblogPrevFit_30_1990, type = "perspectives", topics = c(6,15), main = "Topic contrasts")
+
+```
+
+
+```{r}
+modell.stm.labels <- labelTopics(poliblogPrevFit_30_1990, 1:30)
+out$meta$datum <- as.numeric(out$meta$year)
+modell.stm.effekt <- estimateEffect(1:30 ~ country + s(year), poliblogPrevFit_30_1990, meta = out$meta)
+
+par(mfrow=c(3,3))
+for (i in 1:9)
+{
+  plot(modell.stm.effekt, "year", method = "continuous", topics = i, main = paste0(modell.stm.labels$prob[i,1:3], collapse = ", "), ylab = "", printlegend = F)
+}
+
+saveRDS(modell.stm.effekt, file = "data/modell.stm.effekt.rds")
+modell.stm.effekt <- readRDS("data/modell.stm.effekt.rds")
+
+```
+
+```{r}
+mod.out.corr <- topicCorr(poliblogPrevFit_30_1990)
+plot(mod.out.corr)
+
+```
+
+
+```{r}
+save.image("stm_gadarian30.RData")
+
+library(stminsights)
+run_stminsights()
+
+```
